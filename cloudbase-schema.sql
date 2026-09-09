@@ -9,22 +9,22 @@ CREATE TABLE IF NOT EXISTS public.real_leveling_saves (
 
 ALTER TABLE public.real_leveling_saves ENABLE ROW LEVEL SECURITY;
 
-GRANT USAGE ON SCHEMA public TO authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.real_leveling_saves TO authenticated;
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.real_leveling_saves TO anon, authenticated;
 
 DROP POLICY IF EXISTS real_leveling_select_own ON public.real_leveling_saves;
 CREATE POLICY real_leveling_select_own ON public.real_leveling_saves
-  FOR SELECT TO authenticated
+  FOR SELECT TO anon, authenticated
   USING (user_id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS real_leveling_insert_own ON public.real_leveling_saves;
 CREATE POLICY real_leveling_insert_own ON public.real_leveling_saves
-  FOR INSERT TO authenticated
+  FOR INSERT TO anon, authenticated
   WITH CHECK (user_id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS real_leveling_update_own ON public.real_leveling_saves;
 CREATE POLICY real_leveling_update_own ON public.real_leveling_saves
-  FOR UPDATE TO authenticated
+  FOR UPDATE TO anon, authenticated
   USING (user_id = (SELECT auth.uid()))
   WITH CHECK (user_id = (SELECT auth.uid()));
 
