@@ -1,0 +1,8 @@
+import type {ActivityInput} from './game';
+function parseCSV(text:string){const rows:string[][]=[];let row:string[]=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const ch=text[i];if(ch==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}else if(ch===','&&!quoted){row.push(cell);cell='';}else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell='';}else cell+=ch;}if(quoted)throw new Error('CSV 引号未闭合，请重新导出文件。');row.push(cell);if(row.some(v=>v.trim()))rows.push(row);return rows;}
+export function parseActivities(text:string,filename:string):ActivityInput[]{
+ let list:Record<string,unknown>[];if(filename.toLowerCase().endsWith('.json')){const json=JSON.parse(text);list=Array.isArray(json)?json:json.activities;if(!Array.isArray(list))throw new Error('JSON 应包含运动记录数组。');}
+ else{const rows=parseCSV(text.replace(/^\uFEFF/,''));if(rows.length<2)throw new Error('文件中没有运动记录。');const headers=rows[0].map(v=>v.trim().toLowerCase());list=rows.slice(1).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??''])));}
+ if(list.length>250)throw new Error('请将文件分成每份最多250条记录。');
+ return list.map((a,i)=>{if(!a||typeof a!=='object')throw new Error(`第${i+1}条记录格式无效。`);const start=String(a.start_date||a.start||a.start_date_local||'');const type=String(a.type||'Workout');const minutes=Number(a.minutes??a.duration_minutes??Number(a.moving_time??a.elapsed_time)/60);if(!start||!Number.isFinite(minutes))throw new Error(`第${i+1}条缺少日期或时长。`);return {id:String(a.id||`file:${start}:${type}:${minutes}`),name:String(a.name||'运动记录'),type,start,minutes};});
+}
