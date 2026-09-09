@@ -6,7 +6,7 @@
 
 **Site 完整版：** https://real-leveling-rick.heracles1983.chatgpt.site
 
-Pages 版无需平台登录，进度保存在当前浏览器，并支持 CSV / JSON 本地导入；Site 版提供 D1 私人云存档与 Intervals.icu 服务端同步。
+Pages 版无需注册账号，首次打开时由腾讯云 CloudBase 自动建立匿名身份；进度先保存在当前浏览器，再加密同步到上海地域的 PostgreSQL，并支持 CSV / JSON 本地导入。Site 版提供 D1 私人云存档与 Intervals.icu 服务端同步。
 
 ## 玩法
 
@@ -19,7 +19,9 @@ Pages 版无需平台登录，进度保存在当前浏览器，并支持 CSV / J
 
 ## 数据与存档
 
-存档保存在平台D1数据库，按平台提供的稳定用户ID与模式隔离。操作在服务端计算并使用revision比较更新，避免多窗口重复领奖。接口拒绝未登录访问。
+GitHub Pages 版的云存档保存在腾讯云 CloudBase PostgreSQL。浏览器使用匿名身份登录，数据表启用了 RLS；每个身份只能读取和修改自己的存档。网络不可用时继续使用本机存档，恢复连接后再次操作会自动同步。
+
+Site 版的存档保存在平台 D1 数据库，按平台提供的稳定用户 ID 与模式隔离。操作在服务端计算并使用 revision 比较更新，避免多窗口重复领奖。接口拒绝未登录访问。
 
 个人试用版支持：
 
@@ -37,10 +39,11 @@ Pages 版无需平台登录，进度保存在当前浏览器，并支持 CSV / J
 - `npx tsc --noEmit` 检查类型。
 - `node --experimental-strip-types --test tests/game-rules.test.mjs` 检查奖励上限、跨设备去重、日期校验、导入、战斗门槛、休息和完整章节通关。
 - 数据库由 `db/schema.ts` 和 `drizzle/` 迁移管理；不在请求中创建表。
+- CloudBase Pages 存档表结构与 RLS 策略位于 `cloudbase-schema.sql`；`cloudbase-api/` 保留可独立部署的 HTTP 云函数版本。
 
 美术位于 `public/art/`，由图像生成工具创作。角色图集在Canvas中按单元格提取并去除洋红背景。音效由浏览器合成，默认关闭。
 
-真实账户同步需由用户在页面输入自己的Key后验证；目前没有使用任何真实账户凭据进行端到端同步测试。
+真实运动账户同步需由用户在页面输入自己的 Key 后验证；目前没有使用任何真实账户凭据进行端到端同步测试。
 
 ## 开源协议
 
