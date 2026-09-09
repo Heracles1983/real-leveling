@@ -2,7 +2,11 @@
 
 私人运动驱动像素RPG试玩版。角色成长、运动结算、锻造、六个遭遇和回合制战斗均可操作。
 
-**在线试玩：** https://real-leveling-rick.heracles1983.chatgpt.site
+**GitHub Pages 纯前端试玩：** https://heracles1983.github.io/real-leveling/
+
+**Site 完整版：** https://real-leveling-rick.heracles1983.chatgpt.site
+
+Pages 版无需平台登录，进度保存在当前浏览器，并支持 CSV / JSON 本地导入；Site 版提供 D1 私人云存档与 Intervals.icu 服务端同步。
 
 ## 玩法
 
