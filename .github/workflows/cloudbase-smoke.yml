@@ -1,0 +1,11 @@
+name: CloudBase API smoke test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public health endpoint
+        run: curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/health
