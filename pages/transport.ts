@@ -3,6 +3,9 @@ const ENV='real-leveling-d2g7pu9shcf32cce6';
 const BASE=`https://${ENV}.api.tcloudbasegateway.com`;
 const GATEWAY='https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com';
 const KEY='real-leveling-cloud-auth-v1';
+const DEVICE_KEY='real-leveling-device-v1';
+const DEVICE=(()=>{const stored=localStorage.getItem(DEVICE_KEY);if(stored)return stored;const value=crypto.randomUUID();localStorage.setItem(DEVICE_KEY,value);return value})();
+const AUTH_HEADERS={'Content-Type':'application/json','Accept':'application/json','x-device-id':DEVICE};
 // Set to the CloudBase HTTP gateway route after deployment.
 const API=import.meta.env.VITE_GAME_API || `${GATEWAY}/real-leveling-api`;
 let pending:Promise<string>|undefined;
@@ -12,8 +15,8 @@ async function token():Promise<string>{
  if(pending)return pending;
  pending=(async()=>{
   let response:Response|undefined;
-  if(session.refresh_token)response=await fetch(`${BASE}/auth/v1/token`,{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(12000),body:JSON.stringify({client_id:ENV,grant_type:'refresh_token',refresh_token:session.refresh_token})});
-  if(!response?.ok)response=await fetch(`${BASE}/auth/v1/signin/anonymously`,{method:'POST',headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(12000),body:'{}'});
+  if(session.refresh_token)response=await fetch(`${BASE}/auth/v1/token`,{method:'POST',headers:AUTH_HEADERS,signal:AbortSignal.timeout(12000),body:JSON.stringify({client_id:ENV,grant_type:'refresh_token',refresh_token:session.refresh_token})});
+  if(!response?.ok)response=await fetch(`${BASE}/auth/v1/signin/anonymously`,{method:'POST',headers:AUTH_HEADERS,signal:AbortSignal.timeout(12000),body:'{}'});
   if(!response.ok)throw new Error('暂时无法连接云存档，请稍后重新读取。');
   const data=await response.json();if(!data.access_token)throw new Error('云端登录返回异常。');
   localStorage.setItem(KEY,JSON.stringify({...data,expires_at:Date.now()+(Number(data.expires_in)||3600)*1000}));return data.access_token;
