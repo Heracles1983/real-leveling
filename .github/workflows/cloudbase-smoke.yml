@@ -7,5 +7,13 @@ jobs:
   health:
     runs-on: ubuntu-latest
     steps:
-      - name: Check public health endpoint
-        run: curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/health
+      - name: Check health, anonymous auth, and game save API
+        shell: bash
+        run: |
+          set -euo pipefail
+          API_ROOT="https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api"
+          AUTH_ROOT="https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com"
+          curl --fail-with-body --silent --show-error --max-time 45 "$API_ROOT/health"
+          TOKEN="$(curl --fail-with-body --silent --show-error --max-time 45 "$AUTH_ROOT/auth/v1/signin/anonymously" -H 'Content-Type: application/json' --data '{}' | jq -r '.access_token // empty')"
+          test -n "$TOKEN"
+          curl --fail-with-body --silent --show-error --max-time 45 "$API_ROOT/api/game?mode=demo" -H "Authorization: Bearer $TOKEN" | jq -e '.state and (.revision >= 0)' >/dev/null
