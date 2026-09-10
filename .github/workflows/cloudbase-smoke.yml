@@ -9,11 +9,10 @@ jobs:
     steps:
       - name: Check public health endpoint
         run: curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/health
-      - name: Create anonymous CloudBase session
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com/auth/v1/signin/anonymously -H 'Content-Type: application/json' --data '{}' | jq -er '.access_token' > "$RUNNER_TEMP/tcb-token"
+      - name: Request anonymous CloudBase session
+        run: curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com/auth/v1/signin/anonymously -H 'Content-Type: application/json' --data '{}' -o "$RUNNER_TEMP/tcb-auth.json"
+      - name: Validate anonymous access token
+        run: jq -er '.access_token' "$RUNNER_TEMP/tcb-auth.json" > "$RUNNER_TEMP/tcb-token"
       - name: Read demo game save
         shell: bash
         run: |
