@@ -7,13 +7,16 @@ jobs:
   health:
     runs-on: ubuntu-latest
     steps:
-      - name: Check health, anonymous auth, and game save API
+      - name: Check public health endpoint
+        run: curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/health
+      - name: Create anonymous CloudBase session
         shell: bash
         run: |
           set -euo pipefail
-          API_ROOT="https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api"
-          AUTH_ROOT="https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com"
-          curl --fail-with-body --silent --show-error --max-time 45 "$API_ROOT/health"
-          TOKEN="$(curl --fail-with-body --silent --show-error --max-time 45 "$AUTH_ROOT/auth/v1/signin/anonymously" -H 'Content-Type: application/json' --data '{}' | jq -r '.access_token // empty')"
-          test -n "$TOKEN"
-          curl --fail-with-body --silent --show-error --max-time 45 "$API_ROOT/api/game?mode=demo" -H "Authorization: Bearer $TOKEN" | jq -e '.state and (.revision >= 0)' >/dev/null
+          curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com/auth/v1/signin/anonymously -H 'Content-Type: application/json' --data '{}' | jq -er '.access_token' > "$RUNNER_TEMP/tcb-token"
+      - name: Read demo game save
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat "$RUNNER_TEMP/tcb-token")"
+          curl --fail-with-body --silent --show-error --max-time 45 'https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/api/game?mode=demo' -H "Authorization: Bearer $TOKEN" | jq -e '.state and (.revision >= 0)' >/dev/null
