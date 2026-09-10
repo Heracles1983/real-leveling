@@ -12,7 +12,7 @@ jobs:
       - name: Request anonymous CloudBase session
         shell: bash
         run: |
-          curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com/auth/v1/signin/anonymously -H 'Content-Type: application/json' --data '{}' -o "$RUNNER_TEMP/tcb-auth.json"
+          curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com/auth/v1/signin/anonymously -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'x-device-id: real-leveling-smoke-test' --data '{}' -o "$RUNNER_TEMP/tcb-auth.json"
       - name: Validate anonymous access token
         run: jq -er '.access_token' "$RUNNER_TEMP/tcb-auth.json" > "$RUNNER_TEMP/tcb-token"
       - name: Read demo game save
