@@ -1,9 +1,12 @@
 {
   "name": "real-leveling-cloudbase-api",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=18" },
-  "scripts": { "start": "node index.js" },
-  "dependencies": { "pg": "^8.16.3" }
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
 }

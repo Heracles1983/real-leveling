@@ -2,11 +2,11 @@
 
 私人运动驱动像素RPG试玩版。角色成长、运动结算、锻造、六个遭遇和回合制战斗均可操作。
 
-**GitHub Pages 纯前端试玩：** https://heracles1983.github.io/real-leveling/
+**GitHub Pages 完整版：** https://heracles1983.github.io/real-leveling/
 
 **Site 完整版：** https://real-leveling-rick.heracles1983.chatgpt.site
 
-Pages 版无需注册账号，首次打开时由腾讯云 CloudBase 自动建立匿名身份；进度先保存在当前浏览器，再加密同步到上海地域的 PostgreSQL，并支持 CSV / JSON 本地导入。Site 版提供 D1 私人云存档与 Intervals.icu 服务端同步。
+Pages 版复用 Site 版的完整游戏界面与规则，包括演示/真实冒险、属性分配、装备锻造、六个区域、回合制战斗、营地、CSV / JSON 导入和 Intervals.icu 同步。首次打开时由腾讯云 CloudBase 自动建立匿名身份，进度隔离保存在上海地域的 PostgreSQL。
 
 ## 玩法
 
@@ -19,7 +19,7 @@ Pages 版无需注册账号，首次打开时由腾讯云 CloudBase 自动建立
 
 ## 数据与存档
 
-GitHub Pages 版的云存档保存在腾讯云 CloudBase PostgreSQL。浏览器使用匿名身份登录，数据表启用了 RLS；每个身份只能读取和修改自己的存档。网络不可用时继续使用本机存档，恢复连接后再次操作会自动同步。
+GitHub Pages 版的云存档保存在腾讯云 CloudBase PostgreSQL。浏览器使用匿名身份登录，数据表启用了 RLS；每个身份只能读取和修改自己的存档。所有奖励和战斗结果均由云函数计算，多窗口写入使用版本比较，避免重复领取。
 
 Site 版的存档保存在平台 D1 数据库，按平台提供的稳定用户 ID 与模式隔离。操作在服务端计算并使用 revision 比较更新，避免多窗口重复领奖。接口拒绝未登录访问。
 
@@ -37,7 +37,9 @@ Site 版的存档保存在平台 D1 数据库，按平台提供的稳定用户 I
 - 保留所附Vinext、React与Cloudflare Workers构建结构。
 - `npm run build` 构建Worker与静态资源。
 - `npx tsc --noEmit` 检查类型。
+- `npm run build:pages` 构建 GitHub Pages 完整版。
 - `node --experimental-strip-types --test tests/game-rules.test.mjs` 检查奖励上限、跨设备去重、日期校验、导入、战斗门槛、休息和完整章节通关。
+- `node --test tests/cloudbase-store.test.mjs` 检查匿名身份隔离、云存档并发更新和操作输入校验。
 - 数据库由 `db/schema.ts` 和 `drizzle/` 迁移管理；不在请求中创建表。
 - CloudBase Pages 存档表结构与 RLS 策略位于 `cloudbase-schema.sql`；`cloudbase-api/` 保留可独立部署的 HTTP 云函数版本。
 
