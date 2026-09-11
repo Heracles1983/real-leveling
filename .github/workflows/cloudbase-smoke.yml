@@ -21,3 +21,18 @@ jobs:
           set -euo pipefail
           TOKEN="$(cat "$RUNNER_TEMP/tcb-token")"
           curl --fail-with-body --silent --show-error --max-time 45 'https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/api/game?mode=demo' -H "Authorization: Bearer $TOKEN" | jq -e '.state and (.revision >= 0)' >/dev/null
+
+      - name: Check browser CORS responses
+        run: |
+          node --input-type=module <<'NODE'
+          const origin='https://heracles1983.github.io';
+          const auth='https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com/auth/v1/signin/anonymously';
+          const api='https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/api/game?mode=demo';
+          for(const [name,url,headers] of [['auth',auth,'content-type,x-device-id'],['game',api,'authorization']]){
+            const r=await fetch(url,{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':name==='auth'?'POST':'GET','Access-Control-Request-Headers':headers},signal:AbortSignal.timeout(30000)});
+            console.log('::notice title=CORS '+name+'::'+JSON.stringify({status:r.status,allowOrigin:r.headers.get('access-control-allow-origin'),allowHeaders:r.headers.get('access-control-allow-headers'),body:(await r.text()).slice(0,200)}));
+          }
+          const r=await fetch(auth,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','x-device-id':'real-leveling-smoke-test'},body:'{}',signal:AbortSignal.timeout(30000)});
+          const d=await r.json();
+          console.log('::notice title=Auth origin::'+JSON.stringify({status:r.status,allowOrigin:r.headers.get('access-control-allow-origin'),hasToken:!!d.access_token,error:d.error||d.message}));
+          NODE
