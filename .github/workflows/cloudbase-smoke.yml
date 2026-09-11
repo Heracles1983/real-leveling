@@ -1,18 +1,46 @@
-name: CloudBase API smoke test
+name: Build Pages and test CloudBase API
 on:
   push:
     branches: [main]
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
+  build-pages:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:pages
+      - name: Publish rebuilt Pages bundle
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs
+          git diff --cached --quiet && exit 0
+          git commit -m "build: refresh GitHub Pages bundle"
+          git push
   health:
+    needs: build-pages
+    if: always() && (needs.build-pages.result == 'success' || needs.build-pages.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Check public health endpoint
         run: curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/health
-      - name: Request anonymous CloudBase session
+      - name: Request proxied anonymous session
         shell: bash
         run: |
-          curl --fail-with-body --silent --show-error --max-time 45 https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com/auth/v1/signin/anonymously -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'x-device-id: real-leveling-smoke-test' --data '{}' -o "$RUNNER_TEMP/tcb-auth.json"
+          curl --fail-with-body --silent --show-error --max-time 45 \
+            https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/api/session \
+            -H 'Origin: https://heracles1983.github.io' \
+            -H 'Content-Type: application/json' \
+            --data '{"deviceId":"real-leveling-smoke-test"}' \
+            -o "$RUNNER_TEMP/tcb-auth.json"
       - name: Validate anonymous access token
         run: jq -er '.access_token' "$RUNNER_TEMP/tcb-auth.json" > "$RUNNER_TEMP/tcb-token"
       - name: Read demo game save
@@ -20,19 +48,21 @@ jobs:
         run: |
           set -euo pipefail
           TOKEN="$(cat "$RUNNER_TEMP/tcb-token")"
-          curl --fail-with-body --silent --show-error --max-time 45 'https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/api/game?mode=demo' -H "Authorization: Bearer $TOKEN" | jq -e '.state and (.revision >= 0)' >/dev/null
+          curl --fail-with-body --silent --show-error --max-time 45 \
+            'https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/api/game?mode=demo' \
+            -H 'Origin: https://heracles1983.github.io' \
+            -H "Authorization: Bearer $TOKEN" | jq -e '.state and (.revision >= 0)' >/dev/null
 
       - name: Check browser CORS responses
         run: |
           node --input-type=module <<'NODE'
           const origin='https://heracles1983.github.io';
-          const auth='https://real-leveling-d2g7pu9shcf32cce6.api.tcloudbasegateway.com/auth/v1/signin/anonymously';
-          const api='https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api/api/game?mode=demo';
-          for(const [name,url,headers] of [['auth',auth,'content-type,x-device-id'],['game',api,'authorization']]){
-            const r=await fetch(url,{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':name==='auth'?'POST':'GET','Access-Control-Request-Headers':headers},signal:AbortSignal.timeout(30000)});
-            console.log('::notice title=CORS '+name+'::'+JSON.stringify({status:r.status,allowOrigin:r.headers.get('access-control-allow-origin'),allowHeaders:r.headers.get('access-control-allow-headers'),body:(await r.text()).slice(0,200)}));
+          const base='https://real-leveling-d2g7pu9shcf32cce6-1452079345.ap-shanghai.app.tcloudbase.com/real-leveling-api';
+          for(const [name,url,method,headers] of [
+            ['session',base+'/api/session','POST','content-type'],
+            ['game',base+'/api/game?mode=demo','GET','authorization']
+          ]){
+            const r=await fetch(url,{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':method,'Access-Control-Request-Headers':headers},signal:AbortSignal.timeout(30000)});
+            if(r.status!==204||r.headers.get('access-control-allow-origin')!==origin)throw new Error(`${name} CORS failed: ${r.status}`);
           }
-          const r=await fetch(auth,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','x-device-id':'real-leveling-smoke-test'},body:'{}',signal:AbortSignal.timeout(30000)});
-          const d=await r.json();
-          console.log('::notice title=Auth origin::'+JSON.stringify({status:r.status,allowOrigin:r.headers.get('access-control-allow-origin'),hasToken:!!d.access_token,error:d.error||d.message}));
           NODE
