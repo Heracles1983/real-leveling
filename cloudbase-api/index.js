@@ -3,9 +3,23 @@ import http from 'node:http';
 import {evolveGame,localDay,mergeActivities} from './game.js';
 import {authorization,readGame,writeGame,publicSnapshot,PublicError} from './rest-store.js';
 const PORT=9000;
+const ENV=process.env.CLOUDBASE_ENV_ID||'real-leveling-d2g7pu9shcf32cce6';
+const AUTH_BASE=`https://${ENV}.api.tcloudbasegateway.com/auth/v1`;
 const ORIGINS=new Set(['https://heracles1983.github.io','http://localhost:5173']);
 function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))}
 async function readBody(req,limit=500000){let size=0;const chunks=[];for await(const c of req){size+=c.length;if(size>limit)throw new PublicError(413,'请求过大。');chunks.push(c)}try{return JSON.parse(Buffer.concat(chunks).toString())}catch{throw new PublicError(400,'请求格式错误。')}}
+async function cloudSession(input){
+ const deviceId=typeof input.deviceId==='string'?input.deviceId:'';
+ if(!/^[A-Za-z0-9._:-]{8,128}$/.test(deviceId))throw new PublicError(400,'设备标识无效。');
+ const headers={'Content-Type':'application/json','Accept':'application/json','x-device-id':deviceId};
+ let response;
+ if(typeof input.refreshToken==='string'&&input.refreshToken.length>=16)response=await fetch(`${AUTH_BASE}/token`,{method:'POST',headers,body:JSON.stringify({client_id:ENV,grant_type:'refresh_token',refresh_token:input.refreshToken}),signal:AbortSignal.timeout(12000)});
+ if(!response?.ok)response=await fetch(`${AUTH_BASE}/signin/anonymously`,{method:'POST',headers,body:'{}',signal:AbortSignal.timeout(12000)});
+ if(!response.ok)throw new PublicError(503,'暂时无法建立云存档会话。');
+ const data=await response.json();
+ if(!data.access_token)throw new PublicError(503,'云存档登录返回异常。');
+ return {access_token:data.access_token,refresh_token:data.refresh_token,expires_in:data.expires_in};
+}
 async function syncIntervals(input,current){
  if(typeof input.apiKey!=='string'||! /^[\x21-\x7E]{10,128}$/.test(input.apiKey))throw new PublicError(400,'请填写有效的个人 API Key。');
  if(current.state.battle?.status==='active')throw new PublicError(400,'先结束当前战斗，再同步运动。');
@@ -32,7 +46,8 @@ export const server=http.createServer(async(req,res)=>{
  if(req.method==='OPTIONS'){res.writeHead(204);return res.end()}
  try{
   const url=new URL(req.url,'http://localhost');
-  if(req.method==='GET'&&url.pathname==='/health')return json(res,200,{ok:true,version:2});
+  if(req.method==='GET'&&url.pathname==='/health')return json(res,200,{ok:true,version:3});
+  if(req.method==='POST'&&url.pathname==='/api/session')return json(res,200,await cloudSession(await readBody(req,2048)));
   if(!['/api/game','/api/intervals'].includes(url.pathname))throw new PublicError(404,'接口不存在。');
   const auth=authorization(req);
   if(req.method==='GET'&&url.pathname==='/api/game'){
