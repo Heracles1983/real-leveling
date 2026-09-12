@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useId,useRef,useState} from 'react';
 import {Swords,Sword,Shield,Heart,Zap,Coins,Gem,Bike,Dumbbell,Footprints,FlaskConical,Tent,Check,Lock,Plus,RefreshCw,Upload,ChevronRight,BookOpen,Volume2,VolumeX,CloudCheck,LoaderCircle,ArrowUpRight,Trophy,Sparkles,Unplug} from 'lucide-react';
 import {Tabs,TabsList,TabsTrigger,TabsContent} from '@/components/ui/tabs';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
@@ -11,12 +11,23 @@ import {parseActivities} from '@/lib/import-activities';
 
 type Snapshot={state:GameState;revision:number};
 const spriteBoxes:Record<string,[number,number,number,number]>={hero:[102,85,332,339],slime:[651,209,224,192],mushroom:[1157,159,216,249],bat:[48,605,438,271],archer:[577,570,349,364],golem:[1036,512,460,434]};
-let atlasPromise:Promise<HTMLImageElement>|null=null;
-function atlas(assetBase:string){if(!atlasPromise)atlasPromise=new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>{atlasPromise=null;reject(new Error('image failed'));};img.src=assetBase+'/art/character-atlas.png';});return atlasPromise;}
 function Sprite({name,className='',label,assetBase=''}:{name:string;className?:string;label?:string;assetBase?:string}){
- const ref=useRef<HTMLCanvasElement>(null);const [failed,setFailed]=useState(false);
- useEffect(()=>{let gone=false;atlas(assetBase).then(img=>{const c=ref.current;if(!c||gone)return;const [x,y,w,h]=spriteBoxes[name]||spriteBoxes.hero;c.width=w;c.height=h;const ctx=c.getContext('2d');if(!ctx)return;ctx.imageSmoothingEnabled=false;ctx.drawImage(img,x,y,w,h,0,0,w,h);const pixels=ctx.getImageData(0,0,w,h);for(let i=0;i<pixels.data.length;i+=4){const r=pixels.data[i],g=pixels.data[i+1],b=pixels.data[i+2];if(r>180&&b>180&&g<90)pixels.data[i+3]=0;}ctx.putImageData(pixels,0,0);}).catch(()=>setFailed(true));return()=>{gone=true;};},[name,assetBase]);
- return failed?<span className={`sprite-fallback ${className}`}>{label||name}</span>:<canvas ref={ref} className={`sprite ${className}`} role='img' aria-label={label||name}/>;
+ const [x,y,w,h]=spriteBoxes[name]||spriteBoxes.hero;const filterId='sprite-key-'+useId().replace(/:/g,'');
+ return <svg className={`sprite ${className}`} viewBox={`${x} ${y} ${w} ${h}`} role='img' aria-label={label||name} preserveAspectRatio='xMidYMid meet'>
+  <defs><filter id={filterId} x='0' y='0' width='1500' height='946' filterUnits='userSpaceOnUse' colorInterpolationFilters='sRGB'>
+   <feColorMatrix in='SourceGraphic' result='red' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0'/>
+   <feComponentTransfer in='red' result='redHigh'><feFuncA type='discrete' tableValues='0 0 0 1 1'/></feComponentTransfer>
+   <feColorMatrix in='SourceGraphic' result='blue' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0'/>
+   <feComponentTransfer in='blue' result='blueHigh'><feFuncA type='discrete' tableValues='0 0 0 1 1'/></feComponentTransfer>
+   <feColorMatrix in='SourceGraphic' result='green' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 1 0 0 0'/>
+   <feComponentTransfer in='green' result='greenLow'><feFuncA type='discrete' tableValues='1 1 0 0 0'/></feComponentTransfer>
+   <feComposite in='redHigh' in2='blueHigh' operator='in' result='redBlue'/>
+   <feComposite in='redBlue' in2='greenLow' operator='in' result='chroma'/>
+   <feComponentTransfer in='chroma' result='keep'><feFuncA type='table' tableValues='1 0'/></feComponentTransfer>
+   <feComposite in='SourceGraphic' in2='keep' operator='in'/>
+  </filter></defs>
+  <image href={assetBase+'/art/character-atlas.png'} width='1500' height='946' filter={`url(#${filterId})`}/>
+ </svg>;
 }
 function ActivityIcon({type}:{type:string}){return activityKind(type)==='strength'?<Dumbbell/>:activityKind(type)==='explore'?<Footprints/>:<Bike/>;}
 function prettyDate(start:string){return new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(start));}
